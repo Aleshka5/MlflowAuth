@@ -11,17 +11,10 @@ services:
     restart: unless-stopped
     ports:
       - "5000:5000"
-    environment:
-      MLFLOW_BACKEND_STORE_URI: "postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
-      MLFLOW_AUTH_DB_URI: "postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_AUTH_DB}"
-      MLFLOW_ARTIFACTS_DESTINATION: "s3://${MLFLOW_BUCKET_NAME}"
-      MLFLOW_S3_ENDPOINT_URL: "${MLFLOW_S3_ENDPOINT_URL}"
-      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
-      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
-      AWS_DEFAULT_REGION: "${AWS_DEFAULT_REGION}"
-      MLFLOW_AUTH_ADMIN_USERNAME: "admin"
-      MLFLOW_AUTH_ADMIN_PASSWORD: "admin_password"
-      MLFLOW_FLASK_SERVER_SECRET_KEY: "change-me-strong-mlflow-secret"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    env_file:
+      - .env.mlflow
     command: ["/bin/sh", "/app/docker/mlflow/start.sh"]
     networks:
       - common
