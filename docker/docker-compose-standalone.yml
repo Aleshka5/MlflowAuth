@@ -1,8 +1,12 @@
+# MLflow only. Joins existing Postgres (network dbs) and MinIO (network s3).
+# Set POSTGRES_HOST and MLFLOW_S3_ENDPOINT_URL to those container names.
+#
+#   podman compose -f docker/docker-compose-standalone.yml --env-file .env.mlflow up -d --build
 services:
   mlflow:
     build:
-      context: .
-      dockerfile: Dockerfile.mlflow
+      context: ..
+      dockerfile: Dockerfile
     container_name: mlflow-server
     restart: unless-stopped
     ports:
@@ -19,3 +23,11 @@ services:
       MLFLOW_AUTH_ADMIN_PASSWORD: "admin_password"
       MLFLOW_FLASK_SERVER_SECRET_KEY: "change-me-strong-mlflow-secret"
     command: ["/bin/sh", "/app/docker/mlflow/start.sh"]
+    networks:
+      - common
+
+networks:
+  default: {}
+  common:
+    external: true
+    name: common

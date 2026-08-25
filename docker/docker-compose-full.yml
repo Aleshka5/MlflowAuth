@@ -1,0 +1,89 @@
+services:
+  postgres:
+    image: docker.io/library/postgres:16-alpine
+    container_name: mlflow-postgres
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mlflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mlflow_password}
+      POSTGRES_DB: ${POSTGRES_DB:-mlflow}
+      POSTGRES_AUTH_DB: ${POSTGRES_AUTH_DB:-auth}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mlflow} -d ${POSTGRES_DB:-mlflow}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  minio:
+    image: docker.io/minio/minio:latest
+    container_name: mlflow-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  minio-init:
+    image: docker.io/minio/mc:latest
+    container_name: mlflow-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MLFLOW_BUCKET_NAME: ${MLFLOW_BUCKET_NAME:-mlflow}
+      MINIO_ENDPOINT: http://minio:9000
+    volumes:
+      - ./minio/init-bucket.sh:/init-bucket.sh:ro
+    entrypoint: ["/bin/sh", "/init-bucket.sh"]
+    restart: "no"
+
+  mlflow:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: mlflow-server
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    ports:
+      - "5000:5000"
+    environment:
+      MLFLOW_BACKEND_STORE_URI: "postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
+      MLFLOW_AUTH_DB_URI: "postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_AUTH_DB}"
+      MLFLOW_ARTIFACTS_DESTINATION: "s3://${MLFLOW_BUCKET_NAME}"
+      MLFLOW_S3_ENDPOINT_URL: "${MLFLOW_S3_ENDPOINT_URL}"
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+      AWS_DEFAULT_REGION: "${AWS_DEFAULT_REGION}"
+      MLFLOW_AUTH_ADMIN_USERNAME: "admin"
+      MLFLOW_AUTH_ADMIN_PASSWORD: "admin_password"
+      MLFLOW_FLASK_SERVER_SECRET_KEY: "change-me-strong-mlflow-secret"
+    command: ["/bin/sh", "/app/docker/mlflow/start.sh"]
+
+volumes:
+  postgres_data:
+  minio_data:
