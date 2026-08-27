@@ -12,7 +12,7 @@ services:
       POSTGRES_AUTH_DB: ${POSTGRES_AUTH_DB:-auth}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./postgres/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh:ro
+      - ../scripts/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mlflow} -d ${POSTGRES_DB:-mlflow}"]
       interval: 5s
@@ -52,14 +52,14 @@ services:
       MLFLOW_BUCKET_NAME: ${MLFLOW_BUCKET_NAME:-mlflow}
       MINIO_ENDPOINT: http://minio:9000
     volumes:
-      - ./minio/init-bucket.sh:/init-bucket.sh:ro
+      - ../scripts/init-bucket.sh:/init-bucket.sh:ro
     entrypoint: ["/bin/sh", "/init-bucket.sh"]
     restart: "no"
 
   mlflow:
     build:
       context: ..
-      dockerfile: Dockerfile
+      dockerfile: docker/Dockerfile
     container_name: mlflow-server
     restart: unless-stopped
     depends_on:
@@ -79,10 +79,11 @@ services:
       AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
       AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
       AWS_DEFAULT_REGION: "${AWS_DEFAULT_REGION}"
+      MLFLOW_AUTH_ENABLED: "${MLFLOW_AUTH_ENABLED:-true}"
       MLFLOW_AUTH_ADMIN_USERNAME: "admin"
       MLFLOW_AUTH_ADMIN_PASSWORD: "admin_password"
       MLFLOW_FLASK_SERVER_SECRET_KEY: "change-me-strong-mlflow-secret"
-    command: ["/bin/sh", "/app/docker/mlflow/start.sh"]
+    command: ["/bin/sh", "/app/scripts/start.sh"]
 
 volumes:
   postgres_data:

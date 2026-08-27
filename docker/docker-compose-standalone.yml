@@ -6,7 +6,7 @@ services:
   mlflow:
     build:
       context: ..
-      dockerfile: Dockerfile
+      dockerfile: docker/Dockerfile
     container_name: mlflow-server
     restart: unless-stopped
     ports:
@@ -19,10 +19,11 @@ services:
       AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
       AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
       AWS_DEFAULT_REGION: "${AWS_DEFAULT_REGION}"
+      MLFLOW_AUTH_ENABLED: "${MLFLOW_AUTH_ENABLED:-true}"
       MLFLOW_AUTH_ADMIN_USERNAME: "admin"
       MLFLOW_AUTH_ADMIN_PASSWORD: "admin_password"
       MLFLOW_FLASK_SERVER_SECRET_KEY: "change-me-strong-mlflow-secret"
-    command: ["/bin/sh", "/app/docker/mlflow/start.sh"]
+    command: ["/bin/sh", "/app/scripts/start.sh"]
     networks:
       - common
 

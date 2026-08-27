@@ -1,18 +1,23 @@
 #!/bin/sh
 set -eu
 
-cat > /tmp/basic_auth.ini <<EOF
+auth_enabled="${MLFLOW_AUTH_ENABLED:-true}"
+
+set --
+if [ "$auth_enabled" = "true" ] || [ "$auth_enabled" = "1" ] || [ "$auth_enabled" = "yes" ]; then
+  cat > /tmp/basic_auth.ini <<EOF
 [mlflow]
 default_permission = READ
 database_uri = ${MLFLOW_AUTH_DB_URI}
 admin_username = ${MLFLOW_AUTH_ADMIN_USERNAME}
 admin_password = ${MLFLOW_AUTH_ADMIN_PASSWORD}
 EOF
-
-export MLFLOW_AUTH_CONFIG_PATH=/tmp/basic_auth.ini
+  export MLFLOW_AUTH_CONFIG_PATH=/tmp/basic_auth.ini
+  set -- --app-name basic-auth
+fi
 
 exec mlflow server \
-  --app-name basic-auth \
+  "$@" \
   --host 0.0.0.0 \
   --allowed-hosts "*" \
   --cors-allowed-origins "*" \

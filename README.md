@@ -4,12 +4,12 @@
 
 ## Состав проекта
 
-- `Dockerfile` — образ Python 3.11 с `mlflow[auth]`, `boto3`, `psycopg2-binary`.
-- `start.sh` — генерация `basic_auth.ini` и запуск `mlflow server` с `--app-name basic-auth`.
+- `docker/Dockerfile` — образ Python 3.11 с `mlflow[auth]`, `boto3`, `psycopg2-binary`.
+- `scripts/start.sh` — запуск `mlflow server`; при `MLFLOW_AUTH_ENABLED=true` пишет `basic_auth.ini` и включает `--app-name basic-auth`.
 - `docker/docker-compose-standalone.yml` — только `mlflow`, внешние сети `dbs` (Postgres) и `s3` (MinIO).
 - `docker/docker-compose-full.yml` — полный стек: `mlflow`, `postgres`, `minio` и одноразовый `minio-init`.
-- `docker/postgres/init-databases.sh` — создание баз `mlflow` и `auth` при первом старте Postgres (полный стек).
-- `docker/minio/init-bucket.sh` — создание bucket `MLFLOW_BUCKET_NAME` после старта MinIO (полный стек).
+- `scripts/init-databases.sh` — создание баз `mlflow` и `auth` при первом старте Postgres (полный стек).
+- `scripts/init-bucket.sh` — создание bucket `MLFLOW_BUCKET_NAME` после старта MinIO (полный стек).
 - `.env.mlflow` — параметры подключения (создать по шаблону `.env.mlflow.example`).
 
 ## Быстрый старт
@@ -22,23 +22,24 @@
 
    Для standalone `POSTGRES_HOST` и `MLFLOW_S3_ENDPOINT_URL` должны совпадать с именами уже запущенных контейнеров Postgres и MinIO.
 
-2. Запустите MLflow к существующим Postgres/MinIO (сети `dbs` и `s3` уже должны существовать):
+2. Запустите стек через Makefile (`make help` — полный список). По умолчанию на `main` — Basic Auth; цели `*-no-auth` поднимают тот же стек без логина.
 
-   ```bash
-   podman compose -f docker/docker-compose-standalone.yml --env-file .env.mlflow up -d --build
-   ```
+   | Команда | Что поднимает |
+   | --- | --- |
+   | `make up-full` | полный стек с auth |
+   | `make up-standalone` | только MLflow с auth (внешние Postgres/MinIO) |
+   | `make up-full-no-auth` | полный стек без auth |
+   | `make up-standalone-no-auth` | только MLflow без auth |
+   | `make down-full` / `down-standalone` / `down-full-no-auth` / `down-standalone-no-auth` | остановка соответствующего варианта |
+   | `make down-all` | остановить все варианты |
 
-   Полный стек со своими Postgres и MinIO:
-
-   ```bash
-   podman compose -f docker/docker-compose-full.yml --env-file .env.mlflow up -d --build
-   ```
+   Auth и no-auth используют одни и те же имена контейнеров (`mlflow-server` и т.д.) — одновременно их не держать. Перед `up-*` Makefile удаляет конфликтующие контейнеры.
 
 3. Проверьте доступность:
 
    | Сервис | URL | Учётные данные |
    | --- | --- | --- |
-   | MLflow | http://localhost:5000 | `admin` / `admin_password` |
+   | MLflow | http://localhost:5000 | `admin` / `admin_password` (только auth; no-auth — без логина) |
    | MinIO Console | http://localhost:9001 | `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` |
    | MinIO S3 API | http://localhost:9000 | access key / secret key (см. ниже) |
    | PostgreSQL | `localhost:5432` | `POSTGRES_USER` / `POSTGRES_PASSWORD` |
@@ -47,7 +48,7 @@
 
 ## PostgreSQL
 
-Официальный образ создаёт базу `POSTGRES_DB` (`mlflow`). Скрипт `docker/postgres/init-databases.sh` при **первой** инициализации тома дополнительно создаёт `POSTGRES_AUTH_DB` (`auth`).
+Официальный образ создаёт базу `POSTGRES_DB` (`mlflow`). Скрипт `scripts/init-databases.sh` при **первой** инициализации тома дополнительно создаёт `POSTGRES_AUTH_DB` (`auth`).
 
 - `mlflow` — tracking metadata (`MLFLOW_BACKEND_STORE_URI`)
 - `auth` — пользователи и права Basic Auth (`MLFLOW_AUTH_DB_URI`)

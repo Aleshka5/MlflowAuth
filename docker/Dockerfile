@@ -4,10 +4,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
 RUN pip install --no-cache-dir \
-    "mlflow[auth]==3.10.1" \
+    "mlflow[auth]==3.15.0" \
     boto3 \
     psycopg2-binary
 
 WORKDIR /app
 
-COPY start.sh /app/docker/mlflow/start.sh
+COPY scripts/start.sh /app/scripts/start.sh
